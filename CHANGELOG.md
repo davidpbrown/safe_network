@@ -2,6 +2,86 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.31.16](https://github.com/maidsafe/safe_network/compare/v0.31.15...v0.31.16) (2021-09-17)
+
+### [0.31.15](https://github.com/maidsafe/safe_network/compare/v0.31.14...v0.31.15) (2021-09-17)
+
+### [0.31.14](https://github.com/maidsafe/safe_network/compare/v0.31.13...v0.31.14) (2021-09-16)
+
+
+### Bug Fixes
+
+* **example:** remove deprecated arg ([01f3fa4](https://github.com/maidsafe/safe_network/commit/01f3fa40fa9a14783006ac594b417b15262417a9))
+
+### [0.31.13](https://github.com/maidsafe/safe_network/compare/v0.31.12...v0.31.13) (2021-09-16)
+
+### [0.31.12](https://github.com/maidsafe/safe_network/compare/v0.31.11...v0.31.12) (2021-09-16)
+
+
+### Bug Fixes
+
+* not forward un-registed operation response ([995ecac](https://github.com/maidsafe/safe_network/commit/995ecac55eb02abc418ec8400a777cffe7552acf))
+
+### [0.31.11](https://github.com/maidsafe/safe_network/compare/v0.31.10...v0.31.11) (2021-09-16)
+
+
+### Features
+
+* **msg_count:** print stats on in/out going ([05a1c6e](https://github.com/maidsafe/safe_network/commit/05a1c6ec3b749de89b4064a9bdb006ef62eec6f3))
+
+### [0.31.10](https://github.com/maidsafe/safe_network/compare/v0.31.9...v0.31.10) (2021-09-16)
+
+
+### Features
+
+* add specific client connection idle_timeout settings ([7318455](https://github.com/maidsafe/safe_network/commit/73184554268443345b9a0ab9354ffb781487f741))
+
+### [0.31.9](https://github.com/maidsafe/safe_network/compare/v0.31.8...v0.31.9) (2021-09-16)
+
+### [0.31.8](https://github.com/maidsafe/safe_network/compare/v0.31.7...v0.31.8) (2021-09-16)
+
+
+### Bug Fixes
+
+* adults only respond to requesting elder now ([d610116](https://github.com/maidsafe/safe_network/commit/d61011642ccbc1fdcb41cdd0ff6606c4c2ffc187))
+
+### [0.31.7](https://github.com/maidsafe/safe_network/compare/v0.31.6...v0.31.7) (2021-09-16)
+
+
+### Features
+
+* **client:** introduce caching of AE resends at client ([fe69703](https://github.com/maidsafe/safe_network/commit/fe697033cf0116dc8353b73bf2dd781fd6fde450))
+
+### [0.31.6](https://github.com/maidsafe/safe_network/compare/v0.31.5...v0.31.6) (2021-09-15)
+
+
+### Bug Fixes
+
+* remove unnecessary option return value ([2a78c74](https://github.com/maidsafe/safe_network/commit/2a78c74ee6f1451e82b85130704133b5b412ea5c))
+
+### [0.31.5](https://github.com/maidsafe/safe_network/compare/v0.31.4...v0.31.5) (2021-09-15)
+
+
+### Bug Fixes
+
+* check dst_name for self first ([87a03ae](https://github.com/maidsafe/safe_network/commit/87a03ae75a27f048fb95f7f88223a173f2b7e0f9))
+
+### [0.31.4](https://github.com/maidsafe/safe_network/compare/v0.31.3...v0.31.4) (2021-09-15)
+
+
+### Bug Fixes
+
+* query subset on AERedirect ([3dab8ab](https://github.com/maidsafe/safe_network/commit/3dab8ab63bbf1c77481e139678e0149ff0234a22))
+
+### [0.31.3](https://github.com/maidsafe/safe_network/compare/v0.31.2...v0.31.3) (2021-09-15)
+
+
+### Features
+
+* read genesis config from file if non provided ([67fc6ca](https://github.com/maidsafe/safe_network/commit/67fc6cac23b3b759ffccb097d776398df2da6588))
+
+### [0.31.2](https://github.com/maidsafe/safe_network/compare/v0.31.1...v0.31.2) (2021-09-15)
+
 ### [0.31.1](https://github.com/maidsafe/safe_network/compare/v0.31.0...v0.31.1) (2021-09-14)
 
 ## [0.31.0](https://github.com/maidsafe/safe_network/compare/v0.30.0...v0.31.0) (2021-09-14)

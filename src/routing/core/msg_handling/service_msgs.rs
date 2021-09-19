@@ -140,6 +140,7 @@ impl Core {
         msg_id: MessageId,
         address: ChunkAddress,
         user: EndUser,
+        requesting_elder: XorName,
     ) -> Result<Vec<Command>> {
         trace!("Handling chunk read at adult");
         let mut commands = vec![];
@@ -154,8 +155,8 @@ impl Core {
 
                 // Setup node authority on this response and send this back to our elders
                 let section_pk = *self.section().chain().last_key();
-                let dst = DstLocation::Section {
-                    name: *address.name(),
+                let dst = DstLocation::Node {
+                    name: requesting_elder,
                     section_pk,
                 };
 
@@ -193,7 +194,7 @@ impl Core {
 
         let query_response = QueryResponse::GetChunk(response);
 
-        match query_response.operation_id() {
+        let pending_removed = match query_response.operation_id() {
             Ok(op_id) => {
                 let node_id = XorName::from(sending_nodes_pk);
                 self.liveness
@@ -201,9 +202,10 @@ impl Core {
                     .await
             }
             Err(error) => {
-                warn!("Node problems noted when retrieving data: {:?}", error)
+                warn!("Node problems noted when retrieving data: {:?}", error);
+                false
             }
-        }
+        };
 
         // Check for unresponsive adults here.
         for (name, count) in self.liveness.find_unresponsive_nodes().await {
@@ -212,6 +214,11 @@ impl Core {
                 name, count
             );
             commands.push(Command::ProposeOffline(name));
+        }
+
+        if !pending_removed {
+            trace!("Ignoring un-expected response");
+            return Ok(commands);
         }
 
         // Send response if one is warrented

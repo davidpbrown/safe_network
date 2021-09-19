@@ -271,6 +271,7 @@ mod tests {
 
     const BLOB_TEST_QUERY_TIMEOUT: u64 = 60;
     const MIN_BLOB_SIZE: usize = self_encryption::MIN_ENCRYPTABLE_BYTES;
+    const DELAY_DIVIDER: usize = 500_000;
 
     #[test]
     fn deterministic_chunking() -> Result<()> {
@@ -308,7 +309,7 @@ mod tests {
             .await?;
 
         // the larger the file, the longer we have to wait before we start querying
-        let delay = usize::max(1, blob.len() / 2_000_000);
+        let delay = usize::max(1, blob.len() / DELAY_DIVIDER);
 
         // Assert that the blob is stored.
         let read_data =
@@ -347,13 +348,13 @@ mod tests {
                 // Read first part
                 let read_data_1 = {
                     let pos = 0;
-                    seek(data.clone(), pos, len).await?
+                    seek_for_test(data.clone(), pos, len).await?
                 };
 
                 // Read second part
                 let read_data_2 = {
                     let pos = len;
-                    seek(data.clone(), pos, len).await?
+                    seek_for_test(data.clone(), pos, len).await?
                 };
 
                 // Join parts
@@ -447,22 +448,22 @@ mod tests {
         let address = client.write_to_network(blob.clone(), scope).await?;
 
         // the larger the file, the longer we have to wait before we start querying
-        let delay = usize::max(1, size / 2_000_000);
+        let delay = usize::max(1, size / DELAY_DIVIDER);
 
         // now that it was written to the network we should be able to retrieve it
-        let read_data = run_w_backoff_delayed(|| client.read_blob(address), 1, delay).await?;
+        let read_data = run_w_backoff_delayed(|| client.read_blob(address), 10, delay).await?;
         // then the content should be what we stored
         compare(blob, read_data)?;
 
         Ok(())
     }
 
-    async fn seek(data: Bytes, pos: usize, len: usize) -> Result<Bytes> {
+    async fn seek_for_test(data: Bytes, pos: usize, len: usize) -> Result<Bytes> {
         let client = create_test_client(Some(BLOB_TEST_QUERY_TIMEOUT)).await?;
         let address = client.write_to_network(data.clone(), Scope::Public).await?;
 
         // the larger the file, the longer we have to wait before we start querying
-        let delay = usize::max(1, len / 2_000_000);
+        let delay = usize::max(1, len / DELAY_DIVIDER);
 
         let read_data =
             run_w_backoff_delayed(|| client.read_blob_from(address, pos, len), 10, delay).await?;

@@ -237,17 +237,59 @@ impl Core {
         original_bytes: Bytes,
         src_location: &SrcLocation,
         dst_section_pk: &BlsPublicKey,
-        dst_name: Option<XorName>,
+        dst_name: XorName,
         sender: SocketAddr,
     ) -> Result<Option<Command>> {
         // Check if the message has reached the correct section,
         // if not, we'll need to respond with AE
+
+        // Let's try to find a section closer to the destination, if it's not for us.
+        if !self.section.prefix().matches(&dst_name) {
+            match self.network.closest_or_opposite(&dst_name) {
+                Some(section_auth) => {
+                    info!("Found a better matching section {:?}", section_auth);
+                    let bounced_msg = original_bytes;
+                    // Redirect to the closest section
+                    let ae_msg = SystemMsg::AntiEntropyRedirect {
+                        section_auth: section_auth.value.clone(),
+                        section_signed: section_auth.sig,
+                        bounced_msg,
+                    };
+                    let wire_msg = WireMsg::single_src(
+                        &self.node,
+                        src_location.to_dst(),
+                        ae_msg,
+                        self.section.authority_provider().section_key(),
+                    )?;
+                    return Ok(Some(Command::SendMessage {
+                        recipients: vec![(src_location.name(), sender)],
+                        wire_msg,
+                    }));
+                }
+                None => {
+                    error!("Our PrefixMap is empty");
+                    // TODO: do we want to reroute some data messages to another seciton here using check_for_better_section_sap_for_data ?
+                    // if not we can remove that function.
+
+                    // TODO: instead of just dropping the message, don't we actually need
+                    // to get up to date info from other Elders in our section as it may be
+                    // a section key we are not aware of yet?
+                    // ...and once we acquired new key/s we attempt AE check again?
+                    error!(
+                            "Anti-Entropy: cannot reply with redirect msg for dst_name {:?} and key {:?} to a closest section.",
+                            dst_name, dst_section_pk
+                        );
+
+                    return Err(Error::NoMatchingSection);
+                }
+            }
+        }
+
         if dst_section_pk == self.section.chain().last_key() {
+            trace!("Provided Section PK matching our latest. All AE checks passed!");
             // Destination section key matches our current section key
             return Ok(None);
         }
-
-        let bounced_msg = original_bytes;
 
         let ae_msg = match self
             .section
@@ -260,6 +302,7 @@ impl Core {
                 let section_signed_auth = self.section.section_signed_authority_provider().clone();
                 let section_auth = section_signed_auth.value;
                 let section_signed = section_signed_auth.sig;
+                let bounced_msg = original_bytes;
 
                 SystemMsg::AntiEntropyRetry {
                     section_auth,
@@ -274,41 +317,8 @@ impl Core {
                     dst_section_pk,
                     sender
                 );
-
-                // Let's try to find a section closer to the destination,
-                // otherwise we just drop the message.
-
-                if let Some(name) = dst_name {
-                    match self.network.closest_or_opposite(&name) {
-                        Some(section_auth) => {
-                            // Redirect to the closest section
-                            SystemMsg::AntiEntropyRedirect {
-                                section_auth: section_auth.value.clone(),
-                                section_signed: section_auth.sig,
-                                bounced_msg,
-                            }
-                        }
-                        None => {
-                            // TODO: do we want to reroute some data messages to another seciton here using check_for_better_section_sap_for_data ?
-                            // if not we can remove that function.
-
-                            // TODO: instead of just dropping the message, don't we actually need
-                            // to get up to date info from other Elders in our section as it may be
-                            // a section key we are not aware of yet?
-                            // ...and once we acquired new key/s we attempt AE check again?
-                            error!(
-                                    "Anti-Entropy: cannot reply with redirect msg for dest key {:?} to a closest section. Resending our SAP",
-                                    dst_section_pk
-                                );
-
-                            return Err(Error::NoMatchingSection);
-                        }
-                    }
-                } else {
-                    trace!("A destination with section key ({:?}) not found in our section chain. Continuing to process", dst_section_pk);
-                    // TODO, actually AE retry
-                    return Ok(None);
-                }
+                // TODO, actually AE retry
+                return Ok(None);
             }
         };
 
@@ -405,19 +415,20 @@ mod tests {
     use assert_matches::assert_matches;
     use bls::SecretKey;
     use eyre::{eyre, Context, Result};
+    use rand::Rng;
     use secured_linked_list::SecuredLinkedList;
     use tokio::sync::mpsc;
     use xor_name::Prefix;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn ae_everything_up_to_date() -> Result<()> {
+        let mut rng = rand::thread_rng();
         let env = Env::new().await?;
-
-        let (msg, src_location) = env.create_message(
-            env.core.section().prefix(),
-            *env.core.section_chain().last_key(),
-        )?;
+        let our_prefix = env.core.section().prefix();
+        let (msg, src_location) =
+            env.create_message(our_prefix, *env.core.section_chain().last_key())?;
         let sender = env.core.node().addr;
+        let dst_name = our_prefix.substituted_in(rng.gen());
         let dst_section_pk = *env.core.section_chain().last_key();
 
         let command = env
@@ -426,7 +437,7 @@ mod tests {
                 msg.serialize()?,
                 &src_location,
                 &dst_section_pk,
-                None,
+                dst_name,
                 sender,
             )
             .await?;
@@ -448,7 +459,7 @@ mod tests {
 
         // since it's not aware of the other prefix, it shall fail with NoMatchingSection
         let dst_section_pk = other_pk;
-        let dst_name = Some(env.other_sap.value.prefix.name());
+        let dst_name = env.other_sap.value.prefix.name();
         match env
             .core
             .check_for_entropy(
@@ -500,13 +511,14 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn ae_outdated_dst_key_of_our_section() -> Result<()> {
+        let mut rng = rand::thread_rng();
         let env = Env::new().await?;
+        let our_prefix = env.core.section().prefix();
 
-        let (msg, src_location) = env.create_message(
-            env.core.section().prefix(),
-            *env.core.section_chain().last_key(),
-        )?;
+        let (msg, src_location) =
+            env.create_message(our_prefix, *env.core.section_chain().last_key())?;
         let sender = env.core.node().addr;
+        let dst_name = our_prefix.substituted_in(rng.gen());
         let dst_section_pk = *env.core.section_chain().root_key();
 
         let command = env
@@ -515,7 +527,7 @@ mod tests {
                 msg.serialize()?,
                 &src_location,
                 &dst_section_pk,
-                None,
+                dst_name,
                 sender,
             )
             .await?;

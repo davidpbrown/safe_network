@@ -16,6 +16,7 @@ mod connectivity;
 mod delivery_group;
 mod liveness_tracking;
 mod messaging;
+mod msg_count;
 mod msg_handling;
 mod register_storage;
 mod split_barrier;
@@ -270,7 +271,8 @@ impl Core {
     pub(crate) fn print_network_stats(&self) {
         self.network
             .network_stats(self.section.authority_provider())
-            .print()
+            .print();
+        self.comm.print_stats();
     }
 }
 
